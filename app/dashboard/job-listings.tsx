@@ -12,6 +12,7 @@ import {
   Animated as RNAnimated,
   Dimensions,
   Modal,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -276,158 +277,103 @@ export default function JobListings() {
   
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <RNAnimated.View 
-        style={[
-          styles.header, 
-          { 
-            height: headerHeight, 
-            paddingTop: insets.top 
-          }
-        ]}
-      >
-        <LinearGradient
-          colors={['#4F78FF', '#3B5EDD']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.headerRow}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          
-          <RNAnimated.Text style={[styles.headerTitle, { opacity: headerTitleOpacity }]}>
-            Job Listings
-          </RNAnimated.Text>
-          
-          <TouchableOpacity style={styles.filterButton} onPress={() => setFilterModalVisible(true)}>
-            <Ionicons name="options-outline" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-        
-        <Text style={styles.largeTitle}>Find Your Next Job</Text>
-      </RNAnimated.View>
-
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={20} color="#4F78FF" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search jobs, skills..."
-            placeholderTextColor="#64748B"
-            value={searchQuery}
-            onChangeText={handleSearch}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => handleSearch('')} style={styles.clearButton}>
-              <Ionicons name="close-circle" size={20} color="#64748B" />
-            </TouchableOpacity>
-          )}
-        </View>
-        
-        {(selectedJobTypes.length > 0 || selectedExperienceLevels.length > 0 || selectedLocations.length > 0) && (
-          <View style={styles.filtersApplied}>
-            <Text style={styles.filtersAppliedText}>
-              Filters applied: {selectedJobTypes.length + selectedExperienceLevels.length + selectedLocations.length}
-            </Text>
-            <TouchableOpacity onPress={resetFilters}>
-              <Text style={styles.clearFiltersText}>Clear</Text>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Jobs</Text>
+          <View style={styles.searchContainer}>
+            <View style={styles.searchBar}>
+              <Ionicons name="search" size={20} color="#666666" style={styles.searchIcon} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search jobs..."
+                placeholderTextColor="#666666"
+                value={searchQuery}
+                onChangeText={handleSearch}
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity
+                  style={styles.clearButton}
+                  onPress={() => handleSearch('')}
+                >
+                  <Ionicons name="close-circle" size={20} color="#666666" />
+                </TouchableOpacity>
+              )}
+            </View>
+            <TouchableOpacity
+              style={styles.filterButton}
+              onPress={() => setFilterModalVisible(true)}
+            >
+              <Ionicons name="options-outline" size={24} color="#1A1A1A" />
             </TouchableOpacity>
           </View>
-        )}
+        </View>
       </View>
 
-      <Animated.View 
-        entering={FadeInDown.duration(500)}
-        style={styles.resultsContainer}
-      >
-        <Text style={styles.resultsCount}>{filteredJobs.length} jobs found</Text>
-        
-        <FlatList
-          data={filteredJobs}
-          keyExtractor={(item) => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.jobsList,
-            { paddingBottom: insets.bottom + 70 }
-          ]}
-          onScroll={RNAnimated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false }
-          )}
-          scrollEventThrottle={16}
-          renderItem={({ item, index }) => (
-            <Animated.View
-              entering={FadeInDown.delay(index * 50).duration(400)}
+      <FlatList
+        data={filteredJobs}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyContainer}>
+            <Ionicons name="search-outline" size={48} color="#666666" />
+            <Text style={styles.emptyTitle}>No jobs found</Text>
+            <Text style={styles.emptySubtitle}>Try adjusting your search</Text>
+          </View>
+        )}
+        renderItem={({ item, index }) => (
+          <Animated.View
+            entering={FadeInDown.delay(index * 100)}
+            style={styles.jobCard}
+          >
+            <TouchableOpacity
+              style={styles.jobCardContent}
+              onPress={() => navigateToJob(item.id)}
+              activeOpacity={0.7}
             >
-              <TouchableOpacity 
-                style={styles.jobCard}
-                onPress={() => navigateToJob(item.id)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.jobCardHeader}>
-                  <Image source={{ uri: item.logo }} style={styles.companyLogo} />
-                  <View style={styles.jobInfo}>
-                    <Text style={styles.jobTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.companyName}>{item.company}</Text>
-                    <View style={styles.typeContainer}>
-                      <Text style={[
-                        styles.jobType,
-                        item.type === 'Full-time' && styles.fullTimeType,
-                        item.type === 'Part-time' && styles.partTimeType,
-                        item.type === 'Contract' && styles.contractType,
-                        item.type === 'Freelance' && styles.freelanceType,
-                      ]}>
-                        {item.type}
-                      </Text>
-                      <Text style={styles.experienceLevel}>{item.experience}</Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity 
-                    style={styles.bookmarkButton}
-                    onPress={() => toggleBookmark(item.id)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Ionicons 
-                      name={item.isBookmarked ? "bookmark" : "bookmark-outline"} 
-                      size={22} 
-                      color={item.isBookmarked ? "#4F78FF" : "#94A3B8"}
-                    />
-                  </TouchableOpacity>
+              <View style={styles.jobCardHeader}>
+                <Image source={{ uri: item.logo }} style={styles.companyLogo} />
+                <View style={styles.jobInfo}>
+                  <Text style={styles.jobTitle} numberOfLines={1}>{item.title}</Text>
+                  <Text style={styles.companyName}>{item.company}</Text>
                 </View>
-                
-                <View style={styles.divider} />
-                
-                <View style={styles.jobDetails}>
-                  <View style={styles.jobDetailItem}>
-                    <Ionicons name="location-outline" size={16} color="#94A3B8" />
-                    <Text style={styles.jobDetailText}>{item.location}</Text>
-                  </View>
-                  <View style={styles.jobDetailItem}>
-                    <Ionicons name="cash-outline" size={16} color="#94A3B8" />
-                    <Text style={styles.jobDetailText}>{item.rate}</Text>
-                  </View>
-                  <View style={styles.jobDetailItem}>
-                    <Ionicons name="time-outline" size={16} color="#94A3B8" />
-                    <Text style={styles.jobDetailText}>{item.date}</Text>
-                  </View>
+                <TouchableOpacity
+                  style={styles.bookmarkButton}
+                  onPress={() => toggleBookmark(item.id)}
+                >
+                  <Ionicons
+                    name={item.isBookmarked ? 'bookmark' : 'bookmark-outline'}
+                    size={20}
+                    color={item.isBookmarked ? '#1A1A1A' : '#666666'}
+                  />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.jobMeta}>
+                <View style={styles.metaItem}>
+                  <Ionicons name="location-outline" size={16} color="#666666" />
+                  <Text style={styles.metaText}>{item.location}</Text>
                 </View>
-                
-                <View style={styles.tagsContainer}>
-                  {item.tags.map((tag, index) => (
-                    <View key={index} style={styles.tag}>
-                      <Text style={styles.tagText}>{tag}</Text>
-                    </View>
-                  ))}
+                <View style={styles.metaItem}>
+                  <Ionicons name="cash-outline" size={16} color="#666666" />
+                  <Text style={styles.metaText}>{item.rate}</Text>
                 </View>
-              </TouchableOpacity>
-            </Animated.View>
-          )}
-        />
-      </Animated.View>
-      
-      {/* Filter Modal */}
+              </View>
+
+              <View style={styles.tagsContainer}>
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>{item.type}</Text>
+                </View>
+                <View style={styles.tag}>
+                  <Text style={styles.tagText}>{item.experience}</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+      />
+
       <Modal
         visible={isFilterModalVisible}
         animationType="slide"
@@ -435,92 +381,77 @@ export default function JobListings() {
         onRequestClose={() => setFilterModalVisible(false)}
       >
         <View style={styles.modalContainer}>
-          <TouchableOpacity 
-            style={styles.modalBackdrop} 
-            activeOpacity={1} 
-            onPress={() => setFilterModalVisible(false)}
-          />
-          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
-            <View style={styles.modalHandle} />
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filter Jobs</Text>
-              <TouchableOpacity 
-                style={styles.closeButton} 
+              <Text style={styles.modalTitle}>Filters</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
                 onPress={() => setFilterModalVisible(false)}
               >
-                <Ionicons name="close" size={24} color="#94A3B8" />
+                <Ionicons name="close" size={24} color="#1A1A1A" />
               </TouchableOpacity>
             </View>
-            
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.filterContent}>
               <View style={styles.filterSection}>
                 <Text style={styles.filterSectionTitle}>Job Type</Text>
                 <View style={styles.filterOptions}>
                   {['Full-time', 'Part-time', 'Contract', 'Freelance'].map((type) => (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       key={type}
                       style={[
                         styles.filterOption,
-                        selectedJobTypes.includes(type) ? styles.filterOptionSelected : {}
+                        selectedJobTypes.includes(type) && styles.filterOptionSelected
                       ]}
                       onPress={() => toggleJobType(type)}
                     >
-                      <Text 
-                        style={[
-                          styles.filterOptionText,
-                          selectedJobTypes.includes(type) ? styles.filterOptionTextSelected : {}
-                        ]}
-                      >
+                      <Text style={[
+                        styles.filterOptionText,
+                        selectedJobTypes.includes(type) && styles.filterOptionTextSelected
+                      ]}>
                         {type}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
-              
               <View style={styles.filterSection}>
                 <Text style={styles.filterSectionTitle}>Experience Level</Text>
                 <View style={styles.filterOptions}>
                   {['Entry', 'Intermediate', 'Senior'].map((level) => (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       key={level}
                       style={[
                         styles.filterOption,
-                        selectedExperienceLevels.includes(level) ? styles.filterOptionSelected : {}
+                        selectedExperienceLevels.includes(level) && styles.filterOptionSelected
                       ]}
                       onPress={() => toggleExperienceLevel(level)}
                     >
-                      <Text 
-                        style={[
-                          styles.filterOptionText,
-                          selectedExperienceLevels.includes(level) ? styles.filterOptionTextSelected : {}
-                        ]}
-                      >
+                      <Text style={[
+                        styles.filterOptionText,
+                        selectedExperienceLevels.includes(level) && styles.filterOptionTextSelected
+                      ]}>
                         {level}
                       </Text>
                     </TouchableOpacity>
                   ))}
                 </View>
               </View>
-              
               <View style={styles.filterSection}>
                 <Text style={styles.filterSectionTitle}>Location</Text>
                 <View style={styles.filterOptions}>
-                  {uniqueLocations.map((location) => (
-                    <TouchableOpacity 
+                  {['Remote', 'New York, NY', 'San Francisco, CA', 'Chicago, IL', 'Boston, MA', 'Austin, TX'].map((location) => (
+                    <TouchableOpacity
                       key={location}
                       style={[
                         styles.filterOption,
-                        selectedLocations.includes(location) ? styles.filterOptionSelected : {}
+                        selectedLocations.includes(location) && styles.filterOptionSelected
                       ]}
                       onPress={() => toggleLocation(location)}
                     >
-                      <Text 
-                        style={[
-                          styles.filterOptionText,
-                          selectedLocations.includes(location) ? styles.filterOptionTextSelected : {}
-                        ]}
-                      >
+                      <Text style={[
+                        styles.filterOptionText,
+                        selectedLocations.includes(location) && styles.filterOptionTextSelected
+                      ]}>
                         {location}
                       </Text>
                     </TouchableOpacity>
@@ -528,26 +459,24 @@ export default function JobListings() {
                 </View>
               </View>
             </ScrollView>
-            
             <View style={styles.modalFooter}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.resetButton}
                 onPress={resetFilters}
               >
                 <Text style={styles.resetButtonText}>Reset</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.applyButton}
+              <TouchableOpacity
+                style={styles.applyFilterButton}
                 onPress={applyFilters}
               >
-                <Text style={styles.applyButtonText}>Apply Filters</Text>
+                <Text style={styles.applyFilterButtonText}>Apply</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-      
+
       <BottomNavigation />
     </View>
   );
@@ -556,345 +485,236 @@ export default function JobListings() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
+    backgroundColor: '#FFFFFF',
   },
   header: {
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
     paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F3F5',
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+  headerContent: {
+    gap: 16,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  largeTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  filterButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    color: '#1A1A1A',
   },
   searchContainer: {
-    paddingHorizontal: 20,
-    marginTop: -20,
-    marginBottom: 10,
-    zIndex: 10,
-  },
-  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 56,
-    backgroundColor: '#1E1E1E',
-    borderRadius: 16,
+    gap: 12,
+  },
+  searchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    height: 44,
     paddingHorizontal: 16,
-    paddingLeft: 16,
-    position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
   },
   searchIcon: {
-    marginRight: 12,
+    marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    height: '100%',
-    fontSize: 16,
-    color: '#FFFFFF',
+    color: '#1A1A1A',
+    fontSize: 15,
   },
   clearButton: {
     padding: 4,
   },
-  filtersApplied: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  filterButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
     alignItems: 'center',
-    paddingVertical: 12,
+    justifyContent: 'center',
   },
-  filtersAppliedText: {
-    fontSize: 14,
-    color: '#94A3B8',
-  },
-  clearFiltersText: {
-    fontSize: 14,
-    color: '#4F78FF',
-    fontWeight: '600',
-  },
-  resultsContainer: {
-    flex: 1,
-    paddingTop: 10,
-  },
-  resultsCount: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#94A3B8',
-    marginHorizontal: 20,
-    marginBottom: 16,
-  },
-  jobsList: {
-    paddingHorizontal: 20,
+  listContent: {
+    padding: 20,
   },
   jobCard: {
-    backgroundColor: '#1E1E1E',
-    borderRadius: 16,
-    marginBottom: 16,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#2A2A2A',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: '#F1F3F5',
+  },
+  jobCardContent: {
+    padding: 16,
   },
   jobCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 12,
   },
   companyLogo: {
-    width: 56,
-    height: 56,
-    borderRadius: 12,
+    width: 48,
+    height: 48,
+    borderRadius: 8,
     marginRight: 12,
   },
   jobInfo: {
     flex: 1,
+    marginRight: 8,
   },
   jobTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: '600',
+    color: '#1A1A1A',
     marginBottom: 4,
   },
   companyName: {
     fontSize: 14,
-    color: '#94A3B8',
-    marginBottom: 8,
-  },
-  typeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  jobType: {
-    fontSize: 12,
-    fontWeight: '600',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginRight: 8,
-  },
-  fullTimeType: {
-    backgroundColor: 'rgba(79, 120, 255, 0.2)',
-    color: '#4F78FF',
-  },
-  partTimeType: {
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
-    color: '#22C55E',
-  },
-  contractType: {
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    color: '#F59E0B',
-  },
-  freelanceType: {
-    backgroundColor: 'rgba(147, 51, 234, 0.2)',
-    color: '#9333EA',
-  },
-  experienceLevel: {
-    fontSize: 12,
-    color: '#94A3B8',
-    backgroundColor: '#2A2A2A',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
+    color: '#666666',
   },
   bookmarkButton: {
-    padding: 8,
+    padding: 4,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#2A2A2A',
-    marginVertical: 12,
-  },
-  jobDetails: {
+  jobMeta: {
     flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
+    gap: 16,
     marginBottom: 12,
   },
-  jobDetailItem: {
+  metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
-    marginBottom: 4,
   },
-  jobDetailText: {
-    marginLeft: 4,
+  metaText: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: '#666666',
+    marginLeft: 4,
   },
   tagsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    gap: 8,
   },
   tag: {
-    backgroundColor: '#2A2A2A',
-    paddingVertical: 6,
+    backgroundColor: '#F8F9FA',
     paddingHorizontal: 10,
-    borderRadius: 20,
-    marginRight: 8,
-    marginBottom: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   tagText: {
     fontSize: 12,
-    color: '#4F78FF',
-    fontWeight: '500',
+    color: '#666666',
   },
   modalContainer: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  },
   modalContent: {
-    backgroundColor: '#1E1E1E',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 16,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: '#2A2A2A', 
-    borderBottomWidth: 0,
-  },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    backgroundColor: '#3A3A3A',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1A1A1A',
   },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#2A2A2A',
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: 4,
   },
-  modalBody: {
-    maxHeight: height * 0.6,
+  filterContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   filterSection: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   filterSectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 16,
+    color: '#1A1A1A',
+    marginBottom: 12,
   },
   filterOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: 8,
   },
   filterOption: {
-    paddingVertical: 8,
     paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2A2A2A',
-    backgroundColor: '#1E1E1E',
-    marginRight: 12,
-    marginBottom: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#F8F9FA',
   },
   filterOptionSelected: {
-    backgroundColor: '#4F78FF',
-    borderColor: '#4F78FF',
+    backgroundColor: '#1A1A1A',
   },
   filterOptionText: {
-    fontSize: 14,
-    color: '#94A3B8',
+    fontSize: 13,
+    color: '#666666',
   },
   filterOptionTextSelected: {
     color: '#FFFFFF',
   },
   modalFooter: {
     flexDirection: 'row',
-    marginTop: 24,
+    padding: 20,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F3F5',
   },
   resetButton: {
     flex: 1,
-    backgroundColor: '#2A2A2A',
-    borderRadius: 12,
-    paddingVertical: 14,
-    marginRight: 12,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#F8F9FA',
     alignItems: 'center',
     justifyContent: 'center',
   },
   resetButtonText: {
-    color: '#94A3B8',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
+    color: '#666666',
   },
-  applyButton: {
-    flex: 2,
-    backgroundColor: '#4F78FF',
-    borderRadius: 12,
-    paddingVertical: 16,
+  applyFilterButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#1A1A1A',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  applyButtonText: {
+  applyFilterButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
     color: '#FFFFFF',
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 100,
+    paddingHorizontal: 20,
+  },
+  emptyTitle: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#1A1A1A',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#666666',
   },
 });

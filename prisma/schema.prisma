@@ -1,0 +1,269 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+enum UserRole {
+  WORKER
+  BUSINESS
+  ADMIN
+}
+
+enum JobStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum ShiftStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  password      String
+  role          UserRole  @default(WORKER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  emailVerified DateTime?
+  image         String?
+  phoneNumber   String?
+  isPhoneVerified Boolean @default(false)
+
+  // Business specific fields
+  companyName   String?
+  industry      String?
+  location      String?
+  businessSize  String?
+  businessType  String?
+  taxId         String?
+  verified      Boolean   @default(false)
+  businessHours String?   // JSON string of business hours
+  businessPhotos String?  // JSON array of photo URLs
+
+  // Worker specific fields
+  skills        String?   // Comma-separated list of skills
+  experience    String?   // JSON string of work experience
+  education     String?   // JSON string of education history
+  availability  String?   // JSON string of weekly availability
+  preferredJobs String?   // JSON array of preferred job types
+  languages     String?   // JSON array of language proficiencies
+  rating        Float?
+  totalJobs     Int       @default(0)
+  totalHours    Float     @default(0)
+  reliability   Float     @default(0)  // Percentage of shifts completed
+  bio           String?
+  certifications Certification[]
+
+  // Background check and verification
+  backgroundCheck        VerificationStatus @default(PENDING)
+  backgroundCheckDate    DateTime?
+  identityVerified      Boolean @default(false)
+  documentsVerified     Boolean @default(false)
+
+  // Relations
+  postedJobs      Job[]         @relation("PostedJobs")
+  applications    Application[] @relation("WorkerApplications")
+  shifts         Shift[]       @relation("WorkerShifts")
+  sentMessages    Message[]    @relation("MessageSender")
+  receivedMessages Message[]   @relation("MessageReceiver")
+  reviews         Review[]     @relation("ReviewAuthor")
+  receivedReviews Review[]     @relation("ReviewTarget")
+  payments       Payment[]     @relation("UserPayments")
+  notifications  Notification[] @relation("UserNotifications")
+  documents      Document[]    @relation("UserDocuments")
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  location    String
+  payRate     Float
+  startDate   DateTime
+  endDate     DateTime?
+  status      JobStatus @default(OPEN)
+  skills      String    // Comma-separated list of skills
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Additional fields
+  jobType     String    // Full-time, Part-time, Temporary
+  benefits    String?   // JSON array of benefits
+  requirements String?  // JSON array of requirements
+  dress_code  String?
+  urgency     Boolean   @default(false)
+  positions   Int       @default(1)
+  filled      Int       @default(0)
+  views       Int       @default(0)
+  latitude    Float?
+  longitude   Float?
+
+  // Relations
+  business     User          @relation("PostedJobs", fields: [businessId], references: [id])
+  businessId   String
+  applications Application[]
+  shifts      Shift[]
+}
+
+model Application {
+  id        String            @id @default(cuid())
+  status    ApplicationStatus @default(PENDING)
+  note      String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  
+  // Additional fields
+  expectedPay Float?
+  availability String?  // JSON string of specific availability
+  questions   String?   // JSON array of Q&A
+  resume      String?   // URL to resume
+  coverLetter String?
+
+  // Relations
+  job       Job              @relation(fields: [jobId], references: [id])
+  jobId     String
+  worker    User             @relation("WorkerApplications", fields: [workerId], references: [id])
+  workerId  String
+}
+
+model Shift {
+  id          String      @id @default(cuid())
+  startTime   DateTime
+  endTime     DateTime
+  status      ShiftStatus @default(SCHEDULED)
+  payRate     Float
+  totalPay    Float?
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  checkinTime DateTime?
+  checkoutTime DateTime?
+  
+  // Relations
+  job         Job         @relation(fields: [jobId], references: [id])
+  jobId       String
+  worker      User        @relation("WorkerShifts", fields: [workerId], references: [id])
+  workerId    String
+  payment     Payment?
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  amount        Float
+  status        PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  processedAt   DateTime?
+  stripePaymentId String?
+  description   String?
+  
+  // Relations
+  user         User          @relation("UserPayments", fields: [userId], references: [id])
+  userId       String
+  shift        Shift?        @relation(fields: [shiftId], references: [id])
+  shiftId      String?       @unique
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false)
+  type      String?  // direct, system, shift-update
+  metadata  String?  // JSON string for additional data
+
+  // Relations
+  sender     User     @relation("MessageSender", fields: [senderId], references: [id])
+  senderId   String
+  receiver   User     @relation("MessageReceiver", fields: [receiverId], references: [id])
+  receiverId String
+}
+
+model Review {
+  id          String   @id @default(cuid())
+  rating      Float
+  comment     String?
+  createdAt   DateTime @default(now())
+  categories  String?  // JSON object of category ratings
+  isPublic    Boolean  @default(true)
+  helpful     Int      @default(0)
+  reported    Boolean  @default(false)
+
+  // Relations
+  author      User     @relation("ReviewAuthor", fields: [authorId], references: [id])
+  authorId    String
+  target      User     @relation("ReviewTarget", fields: [targetId], references: [id])
+  targetId    String
+}
+
+model Certification {
+  id          String   @id @default(cuid())
+  name        String
+  issuer      String
+  issuedDate  DateTime
+  expiryDate  DateTime?
+  verified    Boolean  @default(false)
+  document    String?  // URL to certificate document
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  type        String   // id, certification, insurance, etc.
+  url         String
+  verified    Boolean  @default(false)
+  uploadedAt  DateTime @default(now())
+  verifiedAt  DateTime?
+  
+  // Relations
+  user        User     @relation("UserDocuments", fields: [userId], references: [id])
+  userId      String
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  type        String
+  title       String
+  message     String
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  data        String?  // JSON string for additional data
+  
+  // Relations
+  user        User     @relation("UserNotifications", fields: [userId], references: [id])
+  userId      String
+}

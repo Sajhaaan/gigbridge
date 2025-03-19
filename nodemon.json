@@ -1,0 +1,16 @@
+{
+  "watch": ["backend/src"],
+  "ext": "js,json",
+  "ignore": ["node_modules", ".git", "*.test.js"],
+  "exec": "node ./backend/src/server.js",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "events": {
+    "restart": "echo \"[nodemon] Restarting server...\"",
+    "crash": "echo \"[nodemon] Server crashed - waiting for changes before restart\"",
+    "start": "echo \"[nodemon] Starting server...\""
+  },
+  "delay": "1500",
+  "verbose": true
+} 

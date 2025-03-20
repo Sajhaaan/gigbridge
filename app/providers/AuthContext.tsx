@@ -1,144 +1,113 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { mockApi } from '../utils/mockApi'; // Import our mock API
+import { User } from '../types';
 
-export type UserType = 'worker' | 'business';
-
-export interface User {
-  id: string;
-  email: string;
-  fullName: string;
-  userType: UserType;
-  token?: string;
-}
-
-export interface AuthContextType {
+interface AuthContextType {
   user: User | null;
-  loading: boolean;
+  isLoading: boolean;
   error: string | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (fullName: string, email: string, password: string, userType: 'worker' | 'business') => Promise<void>;
+  signUp: (userType: string, fullName: string, email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   isWorker: () => boolean;
   isBusiness: () => boolean;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if user is logged in
-    const checkUser = async () => {
-      try {
-        const userString = await AsyncStorage.getItem('user');
-        const tokenString = await AsyncStorage.getItem('token');
-        
-        if (userString && tokenString) {
-          const userData = JSON.parse(userString);
-          // Token is stored as a string, no need to parse
-          const token = tokenString;
-          
-          setUser({ ...userData, token } as User);
-        }
-      } catch (error) {
-        console.error('Error loading user data', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkUser();
+    loadUser();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const loadUser = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      
-      // Call the mock API endpoint
-      const response = await mockApi.login(email, password);
-      
-      // Extract user data and token from response
-      const { user: userData, token } = response;
-      
-      if (!userData || !token) {
-        throw new Error('Invalid response from server');
+      const userJson = await AsyncStorage.getItem('user');
+      if (userJson) {
+        const userData = JSON.parse(userJson);
+        setUser(userData);
       }
-      
-      // Save user data and token to AsyncStorage
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      await AsyncStorage.setItem('token', token);
-      
-      setUser({ ...userData, token } as User);
-      
-      // Navigate based on user type
-      if (userData.userType === 'business') {
-        router.replace('/dashboard/hirer-dashboard');
-      } else {
-        router.replace('/dashboard');
-      }
-    } catch (error: any) {
-      const errorMessage = error.message || 'An error occurred during sign in';
-      setError(errorMessage);
-      throw new Error(errorMessage);
+    } catch (error) {
+      console.error('Error loading user:', error);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  const signUp = async (fullName: string, email: string, password: string, userType: 'worker' | 'business') => {
-    setLoading(true);
-    setError(null);
-    
+  const signIn = async (email: string, password: string) => {
     try {
-      // API request to register
-      const response = await mockApi.register(fullName, email, password, userType);
+      setError(null);
+      const response = await fetch('http://localhost:8000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      const { user, token } = response;
-      
-      // Save user data and token
-      await AsyncStorage.setItem('user', JSON.stringify(user));
-      await AsyncStorage.setItem('token', token);
-      
-      // Set user in context
-      setUser({ ...user, token } as User);
-      
-      // Redirect based on user type
-      if (userType === 'business') {
-        router.replace('/dashboard/hirer-dashboard');
-      } else {
-        router.replace('/dashboard');
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to sign in');
       }
-    } catch (error: any) {
-      console.error('Sign up error:', error);
-      setError(error.message || 'Failed to create account. Please try again.');
-    } finally {
-      setLoading(false);
+
+      if (data.success && data.data.user) {
+        await AsyncStorage.setItem('user', JSON.stringify(data.data.user));
+        await AsyncStorage.setItem('token', data.data.token);
+        setUser(data.data.user);
+      } else {
+        throw new Error('Invalid response format');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      setError(message);
+      throw error;
+    }
+  };
+
+  const signUp = async (userType: string, fullName: string, email: string, password: string) => {
+    try {
+      setError(null);
+      const response = await fetch('http://localhost:8000/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userType, fullName, email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to sign up');
+      }
+
+      if (data.success && data.data.user) {
+        await AsyncStorage.setItem('user', JSON.stringify(data.data.user));
+        await AsyncStorage.setItem('token', data.data.token);
+        setUser(data.data.user);
+      } else {
+        throw new Error('Invalid response format');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'An error occurred';
+      setError(message);
+      throw error;
     }
   };
 
   const signOut = async () => {
     try {
-      setLoading(true);
-      
-      // Call the logout endpoint
-      await mockApi.logout();
-      
-      // Remove user data and token from AsyncStorage
       await AsyncStorage.removeItem('user');
       await AsyncStorage.removeItem('token');
-      
       setUser(null);
-      router.replace('/welcome');
     } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error signing out:', error);
+      throw error;
     }
   };
 
@@ -147,11 +116,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const isBusiness = () => {
-    return user?.userType === 'business';
+    return user?.userType === 'hirer';
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, signIn, signUp, signOut, isWorker, isBusiness }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        error,
+        signIn,
+        signUp,
+        signOut,
+        isWorker,
+        isBusiness,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -159,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

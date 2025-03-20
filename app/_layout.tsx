@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
-import ThemeProvider from './providers/ThemeContext';
 import { AuthProvider } from './providers/AuthContext';
+import { ThemeProvider } from './providers/ThemeContext';
 import NotificationProvider from './providers/NotificationContext';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';

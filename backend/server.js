@@ -5,48 +5,76 @@ const http = require('http');
 const { Server } = require('socket.io');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
+require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
-const PORT = process.env.PORT || 8000;
 
-// Enable CORS for all origins
+// Security middleware
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+
+// Apply rate limiting to all requests
+app.use(limiter);
+
+// Middleware
 app.use(cors({
-  origin: '*',
+  origin: process.env.CLIENT_URL || '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-
 app.use(express.json());
 
-// MongoDB Connection
-mongoose.connect('mongodb://localhost:27017/gigbridge', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-}).then(() => {
-  console.log('Connected to MongoDB');
-}).catch((err) => {
-  console.error('MongoDB connection error:', err);
+// Socket.IO setup
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL || "*",
+    methods: ["GET", "POST"]
+  }
 });
 
-// Handle MongoDB connection errors
+// Constants
+const PORT = process.env.PORT || 8000;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/gigbridge';
+
+// MongoDB Connection with retry logic
+const connectWithRetry = async () => {
+  const options = {
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  };
+  
+  try {
+    await mongoose.connect(MONGODB_URI, options);
+    console.log('Connected to MongoDB successfully');
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    console.log('Retrying connection in 5 seconds...');
+    setTimeout(connectWithRetry, 5000);
+  }
+};
+
+// Handle MongoDB connection events
 mongoose.connection.on('error', (err) => {
   console.error('MongoDB connection error:', err);
 });
 
 mongoose.connection.on('disconnected', () => {
   console.log('MongoDB disconnected');
+  // Attempt to reconnect
+  setTimeout(connectWithRetry, 5000);
 });
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+mongoose.connection.on('connected', () => {
+  console.log('MongoDB connected');
+});
+
+// Initial connection attempt
+connectWithRetry();
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -88,48 +116,65 @@ const Profile = mongoose.model('Profile', profileSchema);
 // Routes
 app.post('/api/auth/signup', async (req, res) => {
   try {
-    const { userType, fullName, email, password } = req.body;
+    const { fullName, email, password, userType } = req.body;
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    // Validate input
+    if (!fullName || !email || !password || !userType) {
+      return res.status(400).json({
+        success: false,
+        message: 'All fields are required'
+      });
+    }
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({
+        success: false,
+        message: 'User already exists'
+      });
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create new user
+    // Create user
     const user = new User({
-      userType,
       fullName,
-      email,
+      email: email.toLowerCase(),
       password: hashedPassword,
+      userType
     });
 
-    // Save user
     await user.save();
 
-    // Create JWT token
+    // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, email: user.email },
-      'your-secret-key', // Replace with environment variable in production
-      { expiresIn: '1h' }
+      JWT_SECRET,
+      { expiresIn: '24h' }
     );
 
+    // Send response
     res.status(201).json({
-      message: 'User created successfully',
-      user: {
-        id: user._id,
-        userType: user.userType,
-        fullName: user.fullName,
-        email: user.email,
-      },
-      token,
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          userType: user.userType
+        },
+        token
+      }
     });
   } catch (error) {
     console.error('Signup error:', error);
-    res.status(500).json({ message: 'Error creating user' });
+    res.status(500).json({
+      success: false,
+      message: 'Server error during signup'
+    });
   }
 });
 
@@ -137,72 +182,105 @@ app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // Validate input
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+
     // Find user
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
     }
 
-    // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    // Compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials'
+      });
     }
 
-    // Create token
+    // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, email: user.email },
-      'your-secret-key',
-      { expiresIn: '1h' }
+      JWT_SECRET,
+      { expiresIn: '24h' }
     );
 
+    // Send response
     res.json({
-      user: {
-        id: user._id,
-        userType: user.userType,
-        fullName: user.fullName,
-        email: user.email,
-      },
-      token,
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+          userType: user.userType
+        },
+        token
+      }
     });
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ message: 'Error logging in' });
+    res.status(500).json({
+      success: false,
+      message: 'Server error during login'
+    });
   }
 });
 
 // Profile setup endpoint
 app.post('/api/profile/setup', async (req, res) => {
   try {
-    const { age, location, phone, bio, skills, experience } = req.body;
+    const { userId, age, location, phone, bio, skills, experience } = req.body;
     
     // Validate required fields
-    if (!age || !location || !phone) {
+    if (!userId || !age || !location || !phone) {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
-    // Create new profile
-    const newProfile = {
-      id: profiles.length + 1,
-      age,
-      location,
-      phone,
-      bio: bio || '',
-      skills: skills || [],
-      experience: experience || '',
-      createdAt: new Date(),
-    };
+    // Check if profile already exists
+    let profile = await Profile.findOne({ user: userId });
+    
+    if (profile) {
+      // Update existing profile
+      profile.age = age;
+      profile.location = location;
+      profile.phone = phone;
+      profile.bio = bio || profile.bio;
+      profile.skills = skills || profile.skills;
+      profile.experience = experience || profile.experience;
+    } else {
+      // Create new profile
+      profile = new Profile({
+        user: userId,
+        age,
+        location,
+        phone,
+        bio: bio || '',
+        skills: skills || [],
+        experience: experience || ''
+      });
+    }
 
     // Save profile
-    profiles.push(newProfile);
+    await profile.save();
 
     res.status(201).json({
-      message: 'Profile created successfully',
-      profile: newProfile,
+      message: 'Profile updated successfully',
+      profile
     });
   } catch (error) {
     console.error('Profile setup error:', error);
-    res.status(500).json({ message: 'Error creating profile' });
+    res.status(500).json({ message: 'Error updating profile' });
   }
 });
 
@@ -331,15 +409,15 @@ app.get('/api/conversations/:userId', async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
+// Add basic health check endpoint
+app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
-// Error handling middleware
+// Add error logging middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something broke!', error: err.message });
+  console.error('Server error:', err);
+  res.status(500).json({ message: 'Internal server error', error: err.message });
 });
 
 // 404 handler
@@ -347,8 +425,40 @@ app.use((req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 
-// Start server
-server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-  console.log('API URL:', `http://localhost:${PORT}/api`);
-}); 
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  try {
+    await mongoose.connection.close();
+    await server.close();
+    console.log('Graceful shutdown completed');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error during shutdown:', err);
+    process.exit(1);
+  }
+});
+
+// Start server with error handling
+const startServer = async () => {
+  try {
+    await new Promise((resolve, reject) => {
+      server.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server is running on port ${PORT}`);
+        console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`MongoDB URI: ${MONGODB_URI}`);
+        resolve();
+      }).on('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          console.error(`Port ${PORT} is already in use`);
+          process.exit(1);
+        }
+        reject(err);
+      });
+    });
+  } catch (err) {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  }
+};
+
+startServer(); 

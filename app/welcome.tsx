@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Dimensions,
   StatusBar,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -354,5 +355,5 @@ const styles = StyleSheet.create({
     color: '#8B5CF6',
     fontSize: 13,
     fontWeight: '500',
-  }
+  },
 });

@@ -1,9 +1,10 @@
 export interface User {
   id: string;
-  email: string;
   fullName: string;
+  email: string;
+  userType: 'worker' | 'hirer';
+  profileImage?: string;
   avatar?: string;
-  userType: 'worker' | 'business';
   profile?: {
     bio?: string;
     skills?: string[];
@@ -69,4 +70,6 @@ export interface Conversation {
 export interface NavigationProps {
   navigation: any;
   route: any;
-} 
+}
+
+export default {}; 

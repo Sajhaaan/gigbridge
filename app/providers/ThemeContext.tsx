@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Define theme colors
 export const lightTheme = {
@@ -34,40 +35,72 @@ export const darkTheme = {
 
 export type Theme = typeof lightTheme;
 
-interface ThemeContextType {
-  theme: Theme;
-  isDark: boolean;
-  toggleTheme: () => void;
-}
+type ThemeContextType = {
+  isDarkMode: boolean;
+  toggleTheme: () => Promise<void>;
+  theme: {
+    background: string;
+    text: string;
+    subText: string;
+    border: string;
+    card: string;
+    menuIcon: string;
+  };
+};
 
-const ThemeContext = createContext<ThemeContextType | null>(null);
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export default function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const deviceColorScheme = useColorScheme();
-  const [isDark, setIsDark] = useState(deviceColorScheme === 'dark');
-  
-  // Update the theme when the system theme changes
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const systemColorScheme = useColorScheme();
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
   useEffect(() => {
-    setIsDark(deviceColorScheme === 'dark');
-  }, [deviceColorScheme]);
+    loadThemePreference();
+  }, []);
 
-  const theme = isDark ? darkTheme : lightTheme;
-  
-  const toggleTheme = () => {
-    setIsDark(!isDark);
+  const loadThemePreference = async () => {
+    try {
+      const savedTheme = await AsyncStorage.getItem('themeMode');
+      if (savedTheme !== null) {
+        setIsDarkMode(savedTheme === 'dark');
+      } else {
+        setIsDarkMode(systemColorScheme === 'dark');
+      }
+    } catch (error) {
+      console.log('Error loading theme:', error);
+    }
+  };
+
+  const toggleTheme = async () => {
+    const newMode = !isDarkMode;
+    setIsDarkMode(newMode);
+    try {
+      await AsyncStorage.setItem('themeMode', newMode ? 'dark' : 'light');
+    } catch (error) {
+      console.log('Error saving theme:', error);
+    }
+  };
+
+  const theme = {
+    background: isDarkMode ? '#1A1A1A' : '#FFFFFF',
+    text: isDarkMode ? '#FFFFFF' : '#1A1A1A',
+    subText: isDarkMode ? '#A1A1AA' : '#666666',
+    border: isDarkMode ? '#27272A' : '#F1F3F5',
+    card: isDarkMode ? '#27272A' : '#FFFFFF',
+    menuIcon: isDarkMode ? '#3D5CDB' : '#4F78FF',
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, isDark, toggleTheme }}>
+    <ThemeContext.Provider value={{ isDarkMode, toggleTheme, theme }}>
       {children}
     </ThemeContext.Provider>
   );
 }
 
-export function useAppTheme() {
+export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useAppTheme must be used within a ThemeProvider');
+  if (context === undefined) {
+    throw new Error('useTheme must be used within a ThemeProvider');
   }
   return context;
 } 

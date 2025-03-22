@@ -2,7 +2,8 @@ export interface User {
   id: string;
   fullName: string;
   email: string;
-  userType: 'worker' | 'hirer';
+  userType: 'worker' | 'business';
+  token?: string;
   profileImage?: string;
   avatar?: string;
   profile?: {
@@ -17,8 +18,8 @@ export interface User {
       }[];
     };
   };
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Job {

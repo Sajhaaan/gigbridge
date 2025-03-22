@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -27,31 +27,48 @@ export default function SignupScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [userType, setUserType] = useState<'worker' | 'hirer' | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { signUp } = useAuth();
   const insets = useSafeAreaInsets();
+  const confirmPasswordRef = useRef<TextInput | null>(null);
+  const [activeField, setActiveField] = useState<string | null>(null);
 
-  const handleSignUp = async () => {
-    try {
-      if (!fullName || !email || !password || !confirmPassword || !userType) {
-        Alert.alert('Error', 'Please fill in all fields');
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        Alert.alert('Error', 'Passwords do not match');
-        return;
-      }
-
-      await signUp(userType, fullName, email, password);
-      router.replace('/dashboard');
-    } catch (error) {
-      if (error instanceof Error) {
-        Alert.alert('Error', error.message);
-      } else {
-        Alert.alert('Error', 'An unexpected error occurred');
-      }
+  const handleCreateAccount = async () => {
+    if (!fullName || !email || !password || !confirmPassword) {
+      setError('Please fill in all fields');
+      return;
     }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (!userType) {
+      setError('Please select your user type');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Convert 'hirer' to 'business' for API compatibility
+      const apiUserType: 'worker' | 'business' = userType === 'hirer' ? 'business' : 'worker';
+      await signUp(fullName, email, password, apiUserType);
+      router.replace('/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create account');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const focusField = (field: string) => {
+    setActiveField(field);
+  };
+
+  const blurField = () => {
+    setActiveField(null);
   };
 
   return (
@@ -76,77 +93,92 @@ export default function SignupScreen() {
         </View>
 
         <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
+          <View style={[styles.inputContainer, activeField === 'fullName' && styles.inputContainerFocused]}>
+            <Ionicons name="person-outline" size={20} color={activeField === 'fullName' ? '#4F78FF' : '#666'} style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
+              style={[styles.input, activeField === 'fullName' && styles.inputTextFocused]}
               placeholder="Full Name"
-              placeholderTextColor="#666"
+              placeholderTextColor="#9ca3af"
               value={fullName}
               onChangeText={setFullName}
               autoCapitalize="words"
+              onFocus={() => focusField('fullName')}
+              onBlur={blurField}
+              returnKeyType="next"
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+          <View style={[styles.inputContainer, activeField === 'email' && styles.inputContainerFocused]}>
+            <Ionicons name="mail-outline" size={20} color={activeField === 'email' ? '#4F78FF' : '#666'} style={styles.inputIcon} />
             <TextInput
-              style={styles.input}
+              style={[styles.input, activeField === 'email' && styles.inputTextFocused]}
               placeholder="Email"
-              placeholderTextColor="#666"
+              placeholderTextColor="#9ca3af"
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
               onChangeText={setEmail}
+              onFocus={() => focusField('email')}
+              onBlur={blurField}
+              returnKeyType="next"
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+          <View style={[styles.inputContainer, styles.passwordContainer, activeField === 'password' && styles.inputContainerFocused]}>
+            <Ionicons name="lock-closed-outline" size={20} color={activeField === 'password' ? '#4F78FF' : '#666'} style={styles.inputIcon} />
             <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Password"
-              placeholderTextColor="#666"
-              secureTextEntry={!showPassword}
+              style={[styles.input, styles.passwordInput, activeField === 'password' && styles.inputTextFocused]}
               value={password}
               onChangeText={setPassword}
+              placeholder="Create a password"
+              placeholderTextColor="#9ca3af"
+              secureTextEntry={!showPassword}
               autoCapitalize="none"
               autoCorrect={false}
+              onFocus={() => focusField('password')}
+              onBlur={blurField}
+              returnKeyType="next"
+              onSubmitEditing={() => {
+                confirmPasswordRef.current?.focus();
+              }}
             />
             <TouchableOpacity
               onPress={() => setShowPassword(!showPassword)}
-              style={styles.eyeIcon}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.eyeButton}
             >
               <Ionicons
                 name={showPassword ? "eye-off-outline" : "eye-outline"}
                 size={24}
-                color="#666"
+                color={activeField === 'password' ? '#4F78FF' : '#666'}
               />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+          <View style={[styles.inputContainer, styles.passwordContainer, activeField === 'confirmPassword' && styles.inputContainerFocused]}>
+            <Ionicons name="lock-closed-outline" size={20} color={activeField === 'confirmPassword' ? '#4F78FF' : '#666'} style={styles.inputIcon} />
             <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="Confirm Password"
-              placeholderTextColor="#666"
-              secureTextEntry={!showConfirmPassword}
+              ref={confirmPasswordRef}
+              style={[styles.input, styles.passwordInput, activeField === 'confirmPassword' && styles.inputTextFocused]}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
+              placeholder="Confirm your password"
+              placeholderTextColor="#9ca3af"
+              secureTextEntry={!showConfirmPassword}
               autoCapitalize="none"
               autoCorrect={false}
+              onFocus={() => focusField('confirmPassword')}
+              onBlur={blurField}
+              returnKeyType="done"
+              onSubmitEditing={handleCreateAccount}
             />
             <TouchableOpacity
               onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-              style={styles.eyeIcon}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.eyeButton}
             >
               <Ionicons
                 name={showConfirmPassword ? "eye-off-outline" : "eye-outline"}
                 size={24}
-                color="#666"
+                color={activeField === 'confirmPassword' ? '#4F78FF' : '#666'}
               />
             </TouchableOpacity>
           </View>
@@ -183,7 +215,7 @@ export default function SignupScreen() {
 
           <TouchableOpacity
             style={[styles.signupButton, loading && styles.signupButtonDisabled]}
-            onPress={handleSignUp}
+            onPress={handleCreateAccount}
             disabled={loading}
           >
             <LinearGradient
@@ -254,18 +286,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E5E5',
   },
+  inputContainerFocused: {
+    borderColor: '#4F78FF',
+    backgroundColor: '#F8FAFF',
+  },
   inputIcon: {
     marginRight: 12,
   },
   input: {
+    flex: 1,
     fontSize: 16,
     color: '#000',
     height: '100%',
     paddingVertical: 8,
   },
-  eyeIcon: {
-    padding: 8,
-    marginLeft: 8,
+  inputTextFocused: {
+    color: '#4F78FF',
+  },
+  passwordContainer: {
+    paddingRight: 8,
+  },
+  passwordInput: {
+    paddingRight: 8,
+  },
+  eyeButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   roleText: {
     fontSize: 16,

@@ -7,7 +7,7 @@ import {
   Image,
   ScrollView,
   TextInput,
-  ImageBackground,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -109,54 +109,81 @@ export default function HirerDashboard() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoText}>G</Text>
-        </View>
-        
-        <Text style={styles.greeting}>Hello, {user?.fullName?.split(' ')[0] || 'Business'}</Text>
-        
-        <TouchableOpacity 
-          style={styles.profileButton}
-          onPress={() => router.push({pathname: '/dashboard/profile'} as any)}
+      <StatusBar barStyle="dark-content" />
+      
+      {/* Header */}
+      <View style={styles.headerContainer}>
+        <LinearGradient
+          colors={['#f8f9ff', '#ffffff']}
+          style={styles.headerGradient}
         >
-          <Image 
-            source={{ uri: `https://ui-avatars.com/api/?name=${user?.fullName || 'Business'}&background=4F78FF&color=fff` }} 
-            style={styles.profileImage} 
-          />
-        </TouchableOpacity>
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <Text style={styles.logoText}>G</Text>
+            </View>
+            
+            <Text style={styles.greeting}>Hello, {user?.fullName?.split(' ')[0] || 'Business'}</Text>
+            
+            <TouchableOpacity 
+              style={styles.profileButton}
+              onPress={() => router.push({pathname: '/dashboard/profile'} as any)}
+            >
+              <Image 
+                source={{ uri: `https://ui-avatars.com/api/?name=${user?.fullName || 'Business'}&background=4F78FF&color=fff` }} 
+                style={styles.profileImage} 
+              />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
       </View>
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Welcome Card */}
+        <View style={styles.welcomeCardContainer}>
+          <LinearGradient
+            colors={['#4F78FF', '#558BFF']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.welcomeGradient}
+          >
+            <View style={styles.welcomeContent}>
+              <Text style={styles.welcomeText}>Grow your business</Text>
+              <Text style={styles.welcomeSubtext}>Find reliable staff for your needs</Text>
+              
+              <TouchableOpacity 
+                style={styles.postNowButton}
+                onPress={() => router.push({pathname: '/dashboard/jobs/post'} as any)}
+              >
+                <Text style={styles.postNowButtonText}>Post a Job Now</Text>
+                <Ionicons name="arrow-forward" size={16} color="#4F78FF" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.welcomeImageContainer}>
+              <Ionicons name="business" size={60} color="rgba(255,255,255,0.3)" />
+            </View>
+          </LinearGradient>
+        </View>
+        
+        {/* Stats Section */}
         <View style={styles.statsSection}>
           <View style={styles.statCard}>
-            <LinearGradient
-              colors={['#4F78FF', '#558BFF']}
-              style={styles.statCardGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
+            <View style={styles.statCardContent}>
               <View>
                 <Text style={styles.statTitle}>Active Jobs</Text>
                 <Text style={styles.statValue}>{activeJobs.length}</Text>
               </View>
-              <Ionicons name="briefcase" size={32} color="rgba(255,255,255,0.3)" />
-            </LinearGradient>
+              <Ionicons name="briefcase" size={32} color="#4F78FF" />
+            </View>
           </View>
           
           <View style={styles.statCard}>
-            <LinearGradient
-              colors={['#4F78FF', '#558BFF']}
-              style={styles.statCardGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
+            <View style={styles.statCardContent}>
               <View>
                 <Text style={styles.statTitle}>New Applicants</Text>
                 <Text style={styles.statValue}>{applicants.filter(a => a.status === 'applied').length}</Text>
               </View>
-              <Ionicons name="people" size={32} color="rgba(255,255,255,0.3)" />
-            </LinearGradient>
+              <Ionicons name="people" size={32} color="#4F78FF" />
+            </View>
           </View>
         </View>
         
@@ -183,9 +210,32 @@ export default function HirerDashboard() {
                 style={styles.applicantCard}
                 onPress={() => router.push({pathname: `/dashboard/applicants/${applicant.id}`} as any)}
               >
-                <Image source={{ uri: applicant.avatar }} style={styles.applicantAvatar} />
+                <View style={styles.applicantCardHeader}>
+                  <Image source={{ uri: applicant.avatar }} style={styles.applicantAvatar} />
+                  <View style={[
+                    styles.statusBadge, 
+                    applicant.status === 'applied' ? styles.appliedBadge :
+                    applicant.status === 'shortlisted' ? styles.shortlistedBadge : 
+                    styles.hiredBadge
+                  ]}>
+                    <Text style={[
+                      styles.statusText,
+                      applicant.status === 'applied' ? styles.appliedText :
+                      applicant.status === 'shortlisted' ? styles.shortlistedText : 
+                      styles.hiredText
+                    ]}>
+                      {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
+                    </Text>
+                  </View>
+                </View>
+
                 <Text style={styles.applicantName}>{applicant.name}</Text>
                 <Text style={styles.applicantPosition}>{applicant.position}</Text>
+                
+                <View style={styles.applicantLocation}>
+                  <Ionicons name="location-outline" size={14} color="#767676" />
+                  <Text style={styles.locationText}>{applicant.location}</Text>
+                </View>
                 
                 <View style={styles.applicantMeta}>
                   <View style={styles.ratingContainer}>
@@ -196,16 +246,15 @@ export default function HirerDashboard() {
                   <Text style={styles.jobsCompleted}>{applicant.jobsCompleted} jobs</Text>
                 </View>
                 
-                <View style={[
-                  styles.statusBadge, 
-                  applicant.status === 'applied' ? styles.appliedBadge :
-                  applicant.status === 'shortlisted' ? styles.shortlistedBadge : 
-                  styles.hiredBadge
-                ]}>
-                  <Text style={styles.statusText}>
-                    {applicant.status.charAt(0).toUpperCase() + applicant.status.slice(1)}
-                  </Text>
+                <View style={styles.timeAgoContainer}>
+                  <Ionicons name="time-outline" size={12} color="#767676" />
+                  <Text style={styles.timeAgoText}>{applicant.timeAgo}</Text>
                 </View>
+                
+                <TouchableOpacity style={styles.viewProfileButton}>
+                  <Text style={styles.viewProfileText}>View Profile</Text>
+                  <Ionicons name="chevron-forward" size={12} color="#4F78FF" />
+                </TouchableOpacity>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -243,8 +292,10 @@ export default function HirerDashboard() {
                 onPress={() => router.push({pathname: `/dashboard/jobs/${job.id}/applicants`} as any)}
               >
                 <View style={styles.jobHeader}>
-                  <Text style={styles.jobTitle}>{job.title}</Text>
-                  <Text style={styles.jobRate}>{job.rate}</Text>
+                  <View style={styles.jobTitleContainer}>
+                    <Text style={styles.jobTitle}>{job.title}</Text>
+                    <Text style={styles.jobRate}>{job.rate}</Text>
+                  </View>
                 </View>
                 
                 <View style={styles.jobDetails}>
@@ -265,10 +316,14 @@ export default function HirerDashboard() {
                 </View>
                 
                 <View style={styles.applicantsInfo}>
-                  <Ionicons name="people-outline" size={16} color="#767676" />
-                  <Text style={styles.applicantsCount}>{job.applicantsCount} Applicants</Text>
-                  <Text style={styles.viewButtonText}>View Applicants</Text>
-                  <Ionicons name="chevron-forward" size={16} color="#4F78FF" />
+                  <View style={styles.applicantsCountContainer}>
+                    <Ionicons name="people-outline" size={16} color="#767676" />
+                    <Text style={styles.applicantsCount}>{job.applicantsCount} Applicants</Text>
+                  </View>
+                  <TouchableOpacity style={styles.viewButtonContainer}>
+                    <Text style={styles.viewButtonText}>View Applicants</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#4F78FF" />
+                  </TouchableOpacity>
                 </View>
               </TouchableOpacity>
             ))}
@@ -284,7 +339,10 @@ export default function HirerDashboard() {
             style={styles.tabBarItem} 
             onPress={() => router.replace('/dashboard/hirer-dashboard')}
           >
-            <Ionicons name="home" size={24} color="#4F78FF" />
+            <View style={styles.activeIndicator} />
+            <View style={styles.tabBarIconContainer}>
+              <Ionicons name="home" size={22} color="#4F78FF" />
+            </View>
             <Text style={styles.tabBarText}>Home</Text>
           </TouchableOpacity>
           
@@ -292,7 +350,10 @@ export default function HirerDashboard() {
             style={styles.tabBarItem}
             onPress={() => router.push({pathname: '/dashboard/jobs/manage'} as any)}
           >
-            <Ionicons name="briefcase-outline" size={24} color="#767676" />
+            <View style={styles.inactiveIndicator} />
+            <View style={styles.tabBarIconContainer}>
+              <Ionicons name="briefcase-outline" size={22} color="#767676" />
+            </View>
             <Text style={styles.tabBarTextInactive}>Jobs</Text>
           </TouchableOpacity>
           
@@ -309,7 +370,10 @@ export default function HirerDashboard() {
             style={styles.tabBarItem}
             onPress={() => router.push('/dashboard/messages')}
           >
-            <Ionicons name="chatbubble-outline" size={24} color="#767676" />
+            <View style={styles.inactiveIndicator} />
+            <View style={styles.tabBarIconContainer}>
+              <Ionicons name="chatbubble-outline" size={22} color="#767676" />
+            </View>
             <Text style={styles.tabBarTextInactive}>Chats</Text>
           </TouchableOpacity>
           
@@ -317,7 +381,10 @@ export default function HirerDashboard() {
             style={styles.tabBarItem}
             onPress={() => router.push({pathname: '/dashboard/profile'} as any)}
           >
-            <Ionicons name="person-outline" size={24} color="#767676" />
+            <View style={styles.inactiveIndicator} />
+            <View style={styles.tabBarIconContainer}>
+              <Ionicons name="person-outline" size={22} color="#767676" />
+            </View>
             <Text style={styles.tabBarTextInactive}>Profile</Text>
           </TouchableOpacity>
         </View>
@@ -331,14 +398,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
   },
+  headerContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    overflow: 'hidden',
+  },
+  headerGradient: {
+    width: '100%',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   logoContainer: {
     width: 36,
@@ -347,6 +420,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#4F78FF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   logoText: {
     fontSize: 20,
@@ -374,10 +452,114 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
+  welcomeCardContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#4F78FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  welcomeGradient: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+  },
+  welcomeContent: {
+    flex: 2,
+  },
+  welcomeText: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  welcomeSubtext: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 16,
+  },
+  welcomeImageContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  postNowButton: {
+    height: 36,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 15,
+    alignSelf: 'flex-start',
+  },
+  postNowButtonText: {
+    color: '#4F78FF',
+    fontWeight: '600',
+    marginRight: 5,
+  },
+  balanceCardContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  balanceCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#4F78FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  balanceGradient: {
+    padding: 20,
+  },
+  balanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 8,
+  },
+  balanceAmount: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  transferButton: {
+    height: 36,
+    backgroundColor: '#ffffff',
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 15,
+  },
+  transferButtonText: {
+    color: '#4F78FF',
+    fontWeight: '600',
+    marginRight: 5,
+  },
   statsSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
     marginBottom: 24,
   },
   statCard: {
@@ -385,13 +567,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#4F78FF',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
   },
-  statCardGradient: {
+  statCardContent: {
     padding: 16,
     height: 90,
     flexDirection: 'row',
@@ -400,13 +585,13 @@ const styles = StyleSheet.create({
   },
   statTitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#767676',
     marginBottom: 8,
   },
   statValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#333',
   },
   postJobButton: {
     flexDirection: 'row',
@@ -454,7 +639,7 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
   },
   applicantCard: {
-    width: 170,
+    width: 190,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
@@ -467,11 +652,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F0F0F0',
   },
+  applicantCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
   applicantAvatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    marginBottom: 12,
   },
   applicantName: {
     fontSize: 16,
@@ -484,10 +674,45 @@ const styles = StyleSheet.create({
     color: '#767676',
     marginBottom: 8,
   },
+  applicantLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  locationText: {
+    fontSize: 12,
+    color: '#767676',
+    marginLeft: 4,
+  },
   applicantMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+  },
+  timeAgoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  timeAgoText: {
+    fontSize: 12,
+    color: '#767676',
+    marginLeft: 4,
+  },
+  viewProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(79, 120, 255, 0.1)',
+    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  viewProfileText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4F78FF',
+    marginRight: 4,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -523,9 +748,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(76, 175, 80, 0.1)',
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
+  },
+  appliedText: {
     color: '#4F78FF',
+  },
+  shortlistedText: {
+    color: '#FFC107',
+  },
+  hiredText: {
+    color: '#4CAF50',
   },
   jobsSection: {
     marginBottom: 20,
@@ -576,6 +809,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
+  jobTitleContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
   jobTitle: {
     fontSize: 16,
     fontWeight: '600',
@@ -604,15 +843,23 @@ const styles = StyleSheet.create({
   applicantsInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
+  },
+  applicantsCountContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   applicantsCount: {
     fontSize: 14,
     color: '#767676',
     marginLeft: 8,
-    flex: 1,
+  },
+  viewButtonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   viewButtonText: {
     fontSize: 14,
@@ -644,6 +891,30 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+    height: '100%',
+    paddingTop: 8,
+  },
+  tabBarIconContainer: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    top: 0,
+    height: 3,
+    width: 20,
+    backgroundColor: '#4F78FF',
+    borderRadius: 1.5,
+  },
+  inactiveIndicator: {
+    position: 'absolute',
+    top: 0,
+    height: 3,
+    width: 20,
+    backgroundColor: 'transparent',
   },
   tabBarText: {
     fontSize: 10,
@@ -664,9 +935,9 @@ const styles = StyleSheet.create({
     marginTop: -20,
   },
   chatButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     backgroundColor: '#4F78FF',
     alignItems: 'center',
     justifyContent: 'center',

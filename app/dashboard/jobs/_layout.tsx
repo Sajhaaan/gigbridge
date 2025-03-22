@@ -2,41 +2,43 @@ import { Stack } from 'expo-router';
 
 export default function JobsLayout() {
   return (
-    <Stack>
+    <Stack screenOptions={{
+      headerShown: false,
+    }}>
       <Stack.Screen
         name="index"
         options={{
-          title: 'Jobs',
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="[id]"
         options={{
-          title: 'Job Details',
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="post"
         options={{
-          title: 'Post a Job',
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="manage"
         options={{
-          title: 'Manage Jobs',
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="[id]/applicants"
         options={{
-          title: 'Job Applicants',
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="[id]/edit"
         options={{
-          title: 'Edit Job',
+          headerShown: false,
         }}
       />
     </Stack>

@@ -28,15 +28,21 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 // Professional color palette
 const COLORS = {
   primary: '#0A1A2F', // Deep navy blue
-  secondary: '#FF6B6B', // Coral
+  secondary: '#4F78FF', // Bright blue
   accent: '#2ECC71', // Emerald
   background: '#F8F9FA', // Soft gray
   text: '#2D3436',
   textSecondary: '#6C757D',
-  overlay: 'rgba(248, 249, 250, 0.1)',
-  success: '#2ECC71',
-  warning: '#FF6B6B',
-  verified: '#2ECC71',
+  overlay: 'rgba(255, 255, 255, 0.9)', // More opaque white
+  success: '#2ECC71', // Emerald
+  warning: '#FF6B6B', // Coral red
+  verified: '#2ECC71', // Emerald
+  card: '#FFFFFF', // Pure white for cards
+  cardShadow: 'rgba(0, 0, 0, 0.05)', // Subtle shadow
+  gradient: ['#4F78FF', '#2ECC71'], // Blue to Emerald gradient
+  highlight: '#4F78FF', // Bright blue for highlights
+  danger: '#FF4757', // Professional red for warnings
+  info: '#3498DB', // Professional blue for info
 };
 
 const STATS = [
@@ -165,11 +171,16 @@ export default function WorkerDashboard() {
 
   const getJobCardStyle = (job: any) => {
     const baseStyle = {
-      backgroundColor: COLORS.overlay,
+      backgroundColor: COLORS.card,
       borderRadius: 16,
       padding: 16,
       marginBottom: 12,
       overflow: 'hidden' as const,
+      shadowColor: COLORS.cardShadow,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.1,
+      shadowRadius: 12,
+      elevation: 4,
     };
 
     if (job.urgency === 'urgent') {
@@ -325,77 +336,84 @@ export default function WorkerDashboard() {
               transition={{ delay: index * 100 }}
               style={getJobCardStyle(job)}
             >
-              <BlurView intensity={20} tint="light" style={styles.jobCardBlur}>
-                {job.urgency === 'urgent' && (
-                  <View style={styles.urgentBadge}>
-                    <Ionicons name="flash" size={12} color={COLORS.warning} />
-                    <Text style={styles.urgentText}>URGENT HIRING</Text>
-                  </View>
-                )}
-                
-                <View style={styles.jobHeader}>
-                  <View>
-                    <Text style={styles.jobTitle}>{job.title}</Text>
-                    <View style={styles.ratingContainer}>
-                      <Ionicons name="star" size={12} color={COLORS.warning} />
-                      <Text style={styles.ratingText}>{job.rating} ({job.reviews} reviews)</Text>
-                    </View>
-                  </View>
-                  {job.verified && (
-                    <View style={styles.verifiedBadge}>
-                      <Ionicons name="checkmark-circle" size={16} color={COLORS.verified} />
-                      <Text style={styles.verifiedText}>Verified</Text>
+              <TouchableOpacity 
+                onPress={() => router.push({
+                  pathname: '/dashboard/job-details',
+                  params: { job: JSON.stringify(job) }
+                })}
+              >
+                <BlurView intensity={20} tint="light" style={styles.jobCardBlur}>
+                  {job.urgency === 'urgent' && (
+                    <View style={styles.urgentBadge}>
+                      <Ionicons name="flash" size={12} color={COLORS.warning} />
+                      <Text style={styles.urgentText}>URGENT HIRING</Text>
                     </View>
                   )}
-                </View>
-                
-                <View style={styles.jobMeta}>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
-                    <Text style={styles.metaText}>{job.company} • {job.distance} from you</Text>
-                  </View>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} />
-                    <Text style={styles.metaText}>{job.shift.day}, {job.shift.time} ({job.shift.duration})</Text>
-                  </View>
-                </View>
-
-                <View style={styles.jobDetails}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.totalPay}>💸 {job.totalPay} total</Text>
-                    {job.escrow && (
-                      <View style={styles.escrowBadge}>
-                        <Ionicons name="lock-closed" size={12} color={COLORS.verified} />
-                        <Text style={styles.escrowText}>Escrow</Text>
+                  
+                  <View style={styles.jobHeader}>
+                    <View>
+                      <Text style={styles.jobTitle}>{job.title}</Text>
+                      <View style={styles.ratingContainer}>
+                        <Ionicons name="star" size={12} color={COLORS.warning} />
+                        <Text style={styles.ratingText}>{job.rating} ({job.reviews} reviews)</Text>
+                      </View>
+                    </View>
+                    {job.verified && (
+                      <View style={styles.verifiedBadge}>
+                        <Ionicons name="checkmark-circle" size={16} color={COLORS.success} />
+                        <Text style={styles.verifiedText}>Verified</Text>
                       </View>
                     )}
                   </View>
-                  {job.transport && (
-                    <View style={styles.transportBadge}>
-                      <Ionicons name="car" size={12} color={COLORS.verified} />
-                      <Text style={styles.transportText}>Transport Provided</Text>
+                  
+                  <View style={styles.jobMeta}>
+                    <View style={styles.metaItem}>
+                      <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
+                      <Text style={styles.metaText}>{job.company} • {job.distance} from you</Text>
                     </View>
-                  )}
-                  <View style={styles.slotsContainer}>
-                    <Text style={styles.slotsText}>
-                      🎯 {job.slots.filled}/{job.slots.total} slots filled
-                    </Text>
-                    <Text style={styles.applyTimeText}>Apply in 15:00 ⏳</Text>
+                    <View style={styles.metaItem}>
+                      <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} />
+                      <Text style={styles.metaText}>{job.shift.day}, {job.shift.time} ({job.shift.duration})</Text>
+                    </View>
                   </View>
-                </View>
 
-                <TouchableOpacity 
-                  style={[styles.applyButton, { backgroundColor: job.urgency === 'urgent' ? COLORS.warning : COLORS.secondary }]}
-                  onPress={() => handleApplyNow(job.id)}
-                  disabled={applyingJob === job.id}
-                >
-                  {applyingJob === job.id ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.applyButtonText}>Apply Now</Text>
-                  )}
-                </TouchableOpacity>
-              </BlurView>
+                  <View style={styles.jobDetails}>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.totalPay}>💸 {job.totalPay} total</Text>
+                      {job.escrow && (
+                        <View style={styles.escrowBadge}>
+                          <Ionicons name="lock-closed" size={12} color={COLORS.success} />
+                          <Text style={styles.escrowText}>Escrow</Text>
+                        </View>
+                      )}
+                    </View>
+                    {job.transport && (
+                      <View style={styles.transportBadge}>
+                        <Ionicons name="car" size={12} color={COLORS.success} />
+                        <Text style={styles.transportText}>Transport Provided</Text>
+                      </View>
+                    )}
+                    <View style={styles.slotsContainer}>
+                      <Text style={styles.slotsText}>
+                        🎯 {job.slots.filled}/{job.slots.total} slots filled
+                      </Text>
+                      <Text style={styles.applyTimeText}>Apply in 15:00 ⏳</Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity 
+                    style={styles.applyButton}
+                    onPress={() => handleApplyNow(job.id)}
+                    disabled={applyingJob === job.id}
+                  >
+                    {applyingJob === job.id ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Text style={styles.applyButtonText}>Apply Now</Text>
+                    )}
+                  </TouchableOpacity>
+                </BlurView>
+              </TouchableOpacity>
             </MotiView>
           ))}
         </View>
@@ -615,11 +633,12 @@ const styles = StyleSheet.create({
   },
   jobCardBlur: {
     padding: 16,
+    backgroundColor: COLORS.card,
   },
   urgentBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.warning + '20',
+    backgroundColor: COLORS.danger + '15',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -642,7 +661,7 @@ const styles = StyleSheet.create({
   jobTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.text,
+    color: COLORS.primary,
     marginBottom: 4,
     fontFamily: 'Inter-SemiBold',
   },
@@ -659,14 +678,14 @@ const styles = StyleSheet.create({
   verifiedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.verified + '20',
+    backgroundColor: COLORS.verified + '15',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   verifiedText: {
     fontSize: 12,
-    color: COLORS.verified,
+    color: COLORS.success,
     marginLeft: 4,
     fontWeight: '600',
     fontFamily: 'SFProText-Medium',
@@ -705,21 +724,21 @@ const styles = StyleSheet.create({
   escrowBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.verified + '20',
+    backgroundColor: COLORS.verified + '15',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
   },
   escrowText: {
     fontSize: 12,
-    color: COLORS.verified,
+    color: COLORS.success,
     marginLeft: 4,
     fontFamily: 'SFProText-Regular',
   },
   transportBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.verified + '20',
+    backgroundColor: COLORS.verified + '15',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -728,7 +747,7 @@ const styles = StyleSheet.create({
   },
   transportText: {
     fontSize: 12,
-    color: COLORS.verified,
+    color: COLORS.success,
     marginLeft: 4,
     fontFamily: 'SFProText-Regular',
   },
@@ -751,6 +770,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    shadowColor: COLORS.secondary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   applyButtonText: {
     color: '#FFFFFF',

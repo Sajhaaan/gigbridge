@@ -45,6 +45,8 @@ type ThemeContextType = {
     border: string;
     card: string;
     menuIcon: string;
+    textSecondary: string;
+    warning: string;
   };
 };
 
@@ -88,6 +90,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     border: isDarkMode ? '#27272A' : '#F1F3F5',
     card: isDarkMode ? '#27272A' : '#FFFFFF',
     menuIcon: isDarkMode ? '#3D5CDB' : '#4F78FF',
+    textSecondary: isDarkMode ? '#A1A1AA' : '#666666',
+    warning: isDarkMode ? '#FF6B6B' : '#FF6B6B',
   };
 
   return (
